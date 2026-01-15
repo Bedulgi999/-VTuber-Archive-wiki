@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VTuber Archive Wiki</title>
+  <link rel="stylesheet" href="./style.css" />
+  <!-- Supabase JS (browser) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Markdown renderer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Diff (for revision compare) -->
+  <script src="https://cdn.jsdelivr.net/npm/diff@5/dist/diff.min.js"></script>
+  <!-- DOMPurify for safe HTML -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <div class="nav">
+      <div class="nav-inner">
+        <a class="brand" href="#/">
+          <span class="dot">◆</span>
+          <span class="brand-title">VTuber Archive</span>
+          <span class="badge">wiki</span>
+        </a>
+
+        <div class="nav-actions">
+          <a class="btn" href="#/search">검색</a>
+          <a class="btn" href="#/recent">최근 변경</a>
+          <a class="btn" href="#/new">새 문서</a>
+          <a class="btn" href="#/vt/new">VTuber 등록</a>
+          <button class="btn" id="authBtn">로그인</button>
+          <button class="btn ghost" id="themeBtn" title="CRT/Neon 토글">테마</button>
+        </div>
+      </div>
+      <div class="subnav">
+        <div class="subnav-inner">
+          <div class="status" id="statusLine">로딩 중…</div>
+          <div class="kbdrow">
+            <span class="kbd">/</span><span class="muted">커맨드</span>
+            <span class="kbd">E</span><span class="muted">편집</span>
+            <span class="kbd">H</span><span class="muted">역사</span>
+            <span class="kbd">T</span><span class="muted">토론</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div id="toastHost"></div>
+      <div id="view"></div>
+      <footer class="footer">
+        <div>Client-only · HTML/CSS/JS 3파일 · Supabase (DB/Auth/RLS)</div>
+        <div class="muted">보안: anonKey는 공개키. 쓰기 권한은 RLS/트리거로 통제</div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Auth modal -->
+  <dialog id="authModal" class="modal">
+    <form method="dialog" class="modal-card" id="authForm">
+      <div class="modal-head">
+        <div class="modal-title">로그인 / 회원가입</div>
+        <button class="iconbtn" value="cancel" aria-label="닫기">✕</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab is-active" type="button" data-tab="login">로그인</button>
+        <button class="tab" type="button" data-tab="signup">회원가입</button>
+      </div>
+
+      <div class="grid gap12" style="margin-top:12px">
+        <label class="field">
+          <div class="label">이메일</div>
+          <input id="authEmail" type="email" autocomplete="email" placeholder="email@domain.com" required />
+        </label>
+
+        <label class="field">
+          <div class="label">비밀번호</div>
+          <input id="authPass" type="password" autocomplete="current-password" placeholder="비밀번호" required />
+          <div class="help muted">8자 이상 권장</div>
+        </label>
+
+        <label class="field" id="authUserWrap" style="display:none">
+          <div class="label">유저네임(선택)</div>
+          <input id="authUsername" type="text" maxlength="24" placeholder="예: haru_yuki" />
+          <div class="help muted">위키 활동 표시용</div>
+        </label>
+
+        <div class="row gap10">
+          <button class="btn ok" id="authSubmit" type="submit">로그인</button>
+          <button class="btn" id="authMagic" type="button">매직링크</button>
+          <button class="btn danger" id="authLogout" type="button" style="margin-left:auto; display:none">로그아웃</button>
+        </div>
+
+        <details class="cardlite">
+          <summary class="muted">OAuth(선택) · Supabase에서 활성화 필요</summary>
+          <div class="row gap10" style="margin-top:10px; flex-wrap:wrap">
+            <button class="btn" type="button" id="oauthGithub">GitHub</button>
+            <button class="btn" type="button" id="oauthGoogle">Google</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="hr"></div>
+      <div class="muted small">
+        서버가 없는 구조입니다. DB 쓰기 권한은 <b>Supabase RLS + 트리거</b>로 통제해야 안전합니다.
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Report modal -->
+  <dialog id="reportModal" class="modal">
+    <form method="dialog" class="modal-card" id="reportForm">
+      <div class="modal-head">
+        <div class="modal-title">🚩 신고</div>
+        <button class="iconbtn" value="cancel" aria-label="닫기">✕</button>
+      </div>
+
+      <div class="grid gap12">
+        <div class="muted small">대상: <span class="kbd" id="reportTarget"></span></div>
+        <label class="field">
+          <div class="label">사유</div>
+          <textarea id="reportReason" placeholder="허위정보/비방/도배/저작권 등" required></textarea>
+        </label>
+        <div class="row gap10">
+          <button class="btn danger" id="reportSubmit" type="submit">신고 접수</button>
+          <button class="btn" value="cancel">취소</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Command palette -->
+  <dialog id="cmdModal" class="modal">
+    <form method="dialog" class="modal-card" id="cmdForm">
+      <div class="modal-head">
+        <div class="modal-title">⌘ 커맨드</div>
+        <button class="iconbtn" value="cancel" aria-label="닫기">✕</button>
+      </div>
+
+      <label class="field">
+        <div class="label">빠른 이동 / 실행</div>
+        <input id="cmdInput" placeholder="예: /airina, search hololive, new, recent, admin" />
+        <div class="help muted">Enter로 실행</div>
+      </label>
+
+      <div class="hr"></div>
+      <div class="muted small">
+        단축키: <span class="kbd">/</span> 커맨드 · <span class="kbd">E</span> 편집 · <span class="kbd">H</span> 역사 · <span class="kbd">T</span> 토론
+      </div>
+    </form>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>
