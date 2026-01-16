@@ -535,9 +535,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   // ===========================
   let supabase = sb;
 
-  function initSupabase() { supabase = sb; },
-    });
-  }
+  function initSupabase() { supabase = sb; }
 
   async function getUser() {
     const { data } = await sb.auth.getUser();
