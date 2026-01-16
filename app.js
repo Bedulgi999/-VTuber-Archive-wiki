@@ -2152,6 +2152,16 @@ function bindAuthModal() {
 
     $("#authForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      // Prevent double-submit / overlapping auth requests
+      if (window.__authBusy) {
+        toast("잠시만", "로그인/가입 처리 중이야. 잠깐만 기다려줘.", "warn");
+        return;
+      }
+      window.__authBusy = true;
+      const __btns = $("#authForm").querySelectorAll("button, input[type=submit]");
+      __btns.forEach(b => { try { b.disabled = true; } catch {} });
+
       try {
         const email = $("#authEmail").value.trim().toLowerCase();
         const pass = $("#authPass").value;
@@ -2205,6 +2215,16 @@ function bindAuthModal() {
           toast("인증 실패", err?.message || String(err), "error");
         }
       }
+      } finally {
+        window.__authBusy = false;
+        __btns.forEach(b => { try { b.disabled = false; } catch {} });
+      }
+
+      } finally {
+        window.__authBusy = false;
+        __btns.forEach(b => { try { b.disabled = false; } catch {} });
+      }
+
     });
 
     setAuthMode("login");
@@ -2374,10 +2394,3 @@ function bindAuthModal() {
 })();
 
 
-// --- global: ignore AbortError noise so it doesn't break UX ---
-window.addEventListener("unhandledrejection", (ev) => {
-  const r = ev?.reason;
-  if (r && (r.name === "AbortError" || String(r?.message || "").toLowerCase().includes("aborted"))) {
-    ev.preventDefault();
-  }
-});
