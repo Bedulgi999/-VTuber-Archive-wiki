@@ -2110,7 +2110,13 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
     setStatus(`${profile?.username || user.email || "user"} · role:${profile?.role || "user"} · ${user.id.slice(0,8)}…`);
   }
 
-  function bindAuthModal() {
+  
+  function isEmailConfirmError(err) {
+    const msg = String(err?.message || err || "").toLowerCase();
+    return msg.includes("confirm") || msg.includes("verify") || msg.includes("not confirmed") || msg.includes("email not confirmed");
+  }
+
+function bindAuthModal() {
     const modal = $("#authModal");
     $("#authBtn").addEventListener("click", () => modal.showModal());
     $$(".tab", modal).forEach(t => t.addEventListener("click", () => setAuthMode(t.dataset.tab)));
@@ -2153,10 +2159,21 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
           const { data, error } = await sb.auth.signUp({ email, password: pass, options: { emailRedirectTo: (location.origin + location.pathname)} });
           if (error) throw error;
           await ensureProfile(data.user, username);
-          toast("가입 완료", "이메일 인증이 필요할 수 있습니다.");
+          toast("가입 완료", "이메일로 인증 링크가 갔어. 메일에서 확인 후 로그인해줘. (필요하면 매직링크 버튼도 사용 가능)");
         } else {
           const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-          if (error) throw error;
+          if (error) {
+            // Supabase requires email confirmation before password sign-in.
+            if (isEmailConfirmError(error)) {
+              // Auto-send a magic link to finish verification / login.
+              const { error: otpErr } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: (location.origin + location.pathname) } });
+              if (!otpErr) {
+                toast("이메일 인증 필요", "비밀번호 로그인 전에 이메일 인증이 필요해. 방금 로그인 링크를 이메일로 보냈어.", "warn");
+                return;
+              }
+            }
+            throw error;
+          }
           await ensureProfile(data.user, null);
           toast("로그인 완료");
         }
@@ -2165,7 +2182,11 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
         await refreshStatusLine();
         $("#authModal").close();
       } catch (err) {
-        toast("인증 실패", err?.message || String(err), "error");
+        if (isEmailConfirmError(err)) {
+          toast("이메일 인증 필요", "메일함에서 인증 링크를 눌러야 비밀번호 로그인이 가능해. 또는 매직링크로 로그인해줘.", "warn");
+        } else {
+          toast("인증 실패", err?.message || String(err), "error");
+        }
       }
     });
 
