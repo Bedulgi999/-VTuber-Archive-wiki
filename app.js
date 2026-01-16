@@ -2111,7 +2111,11 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   
-  function isEmailConfirmError(err) {
+  function isAbortError(err) {
+    return err && (err.name === "AbortError" || String(err?.message || "").toLowerCase().includes("aborted"));
+  }
+
+function isEmailConfirmError(err) {
     const msg = String(err?.message || err || "").toLowerCase();
     return msg.includes("confirm") || msg.includes("verify") || msg.includes("not confirmed") || msg.includes("email not confirmed");
   }
@@ -2144,6 +2148,11 @@ function bindAuthModal() {
       await sb.auth.signOut();
       toast("로그아웃");
       await refreshAuthBtn();
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user) { ensureProfile(session.user, null).catch(console.warn); }
+    } catch (e) { console.warn(e); }
+
       await refreshStatusLine();
     });
 
@@ -2179,6 +2188,11 @@ function bindAuthModal() {
         }
 
         await refreshAuthBtn();
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user) { ensureProfile(session.user, null).catch(console.warn); }
+    } catch (e) { console.warn(e); }
+
         await refreshStatusLine();
         $("#authModal").close();
       } catch (err) {
@@ -2341,13 +2355,18 @@ function bindAuthModal() {
     bindCmdPalette();
     bindTheme();
 
-    sb.auth.onAuthStateChange(async () => {
-      await refreshAuthBtn();
+    sb.auth.onAuthStateChange(async (event, session) => {
+      // Ensure profile exists for any sign-in method (password / magic link / OAuth)
+      if (event === "SIGNED_IN" && session?.user) {
+        // Fire-and-forget to avoid blocking auth flow
+        ensureProfile(session.user, null).catch(console.warn);
+      }
+await refreshAuthBtn();
       await refreshStatusLine();
       navigate();
+    
     });
-
-    await refreshAuthBtn();
+await refreshAuthBtn();
     await refreshStatusLine();
     window.addEventListener("hashchange", navigate);
     navigate();
