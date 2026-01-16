@@ -16,9 +16,6 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 window.sb = sb;
-// Alias for legacy code paths
-
-window.supabaseClient = sb;
 // ================================================
 
 // ===========================
@@ -2377,4 +2374,19 @@ await refreshAuthBtn();
 
   boot();
 })();
+
+
+
+
+// --- Login page redirect (auth in dedicated page) ---
+try {
+  const _loginBtn = document.querySelector('#btnLogin, #btnAuth, [data-action="login"]');
+  if (_loginBtn) {
+    _loginBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      location.href = './login.html';
+    }, { capture: true });
+  }
+} catch (e) {}
 
