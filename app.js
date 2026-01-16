@@ -2111,6 +2111,10 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   
+  function isAbortError(err) {
+    return (err && (err.name === "AbortError" || String(err?.message || "").toLowerCase().includes("aborted")));
+  }
+
   function isEmailConfirmError(err) {
     const msg = String(err?.message || err || "").toLowerCase();
     return msg.includes("confirm") || msg.includes("verify") || msg.includes("not confirmed") || msg.includes("email not confirmed");
@@ -2167,6 +2171,7 @@ function bindAuthModal() {
             if (isEmailConfirmError(error)) {
               // Auto-send a magic link to finish verification / login.
               const { error: otpErr } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: (location.origin + location.pathname) } });
+              if (otpErr && isAbortError(otpErr)) { return; }
               if (!otpErr) {
                 toast("이메일 인증 필요", "비밀번호 로그인 전에 이메일 인증이 필요해. 방금 로그인 링크를 이메일로 보냈어.", "warn");
                 return;
@@ -2182,7 +2187,9 @@ function bindAuthModal() {
         await refreshStatusLine();
         $("#authModal").close();
       } catch (err) {
-        if (isEmailConfirmError(err)) {
+        if (isAbortError(err)) {
+          toast("요청이 취소됨", "로그인 요청이 중간에 취소됐어. (중복 클릭/페이지 이동/확장프로그램 영향) 다시 시도해줘.", "warn");
+        } else if (isEmailConfirmError(err)) {
           toast("이메일 인증 필요", "메일함에서 인증 링크를 눌러야 비밀번호 로그인이 가능해. 또는 매직링크로 로그인해줘.", "warn");
         } else {
           toast("인증 실패", err?.message || String(err), "error");
