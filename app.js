@@ -1,3 +1,14 @@
+// ===== Supabase client init (must run before any auth/db calls) =====
+const SUPABASE_URL = "https://wzbjbiaiumonyvucewqi.sb.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YmpiaWFpdW1vbnl2dWNld3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0NDAxMTUsImV4cCI6MjA4NDAxNjExNX0.DFmuUKBRDCDkE5zHF5zH9GLU8Wd-IGFIbLwO-5gJC3o";
+
+if (!window.supabase?.createClient) {
+  throw new Error("Supabase SDK not loaded. Check index.html script order.");
+}
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.sb = sb; // debug
+// =========================================================
+
 // ===========================
 // DOM safety helpers (prevent null crashes)
 // ===========================
@@ -65,7 +76,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   // ===========================
   const CONFIG = {
     // Supabase 프로젝트 Settings → API에서 복사
-    supabaseUrl: "https://wzbjbiaiumonyvucewqi.supabase.co",
+    supabaseUrl: "https://wzbjbiaiumonyvucewqi.sb.co",
     supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YmpiaWFpdW1vbnl2dWNld3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0NDAxMTUsImV4cCI6MjA4NDAxNjExNX0.DFmuUKBRDCDkE5zHF5zH9GLU8Wd-IGFIbLwO-5gJC3o",
 
     siteName: "VTuber Archive Wiki",
@@ -522,13 +533,13 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   async function getUser() {
-    const { data } = await supabase.auth.getUser();
+    const { data } = await sb.auth.getUser();
     return data?.user || null;
   }
 
   async function getProfile(userId) {
     if (!userId) return null;
-    const { data } = await supabase.from("profiles").select("id, username, role, created_at").eq("id", userId).maybeSingle();
+    const { data } = await sb.from("profiles").select("id, username, role, created_at").eq("id", userId).maybeSingle();
     return data || null;
   }
 
@@ -564,13 +575,13 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   async function dbUpsertVtuber(vt) {
-    const { data, error } = await supabase.from("vtubers").upsert(vt, { onConflict: "slug" }).select().maybeSingle();
+    const { data, error } = await sb.from("vtubers").upsert(vt, { onConflict: "slug" }).select().maybeSingle();
     if (error) throw error;
     return data;
   }
 
   async function dbListVtubers({ limit = 24, order = "view_count" } = {}) {
-    let q = supabase.from("vtubers").select("slug,display_name,agency,generation,debut_date,view_count,tags,updated_at").eq("is_deleted", false);
+    let q = sb.from("vtubers").select("slug,display_name,agency,generation,debut_date,view_count,tags,updated_at").eq("is_deleted", false);
     q = order === "updated" ? q.order("updated_at", { ascending: false }) : q.order("view_count", { ascending: false });
     const { data, error } = await q.limit(clamp(limit, 1, 100));
     if (error) throw error;
@@ -598,7 +609,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   async function dbGetRevision(revId) {
-    const { data, error } = await supabase.from("wiki_revisions").select("*").eq("id", revId).maybeSingle();
+    const { data, error } = await sb.from("wiki_revisions").select("*").eq("id", revId).maybeSingle();
     if (error) throw error;
     return data || null;
   }
@@ -623,7 +634,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   async function dbSetCurrentRevision(pageId, revId) {
-    const { error } = await supabase.from("wiki_pages").update({ current_revision_id: revId }).eq("id", pageId);
+    const { error } = await sb.from("wiki_pages").update({ current_revision_id: revId }).eq("id", pageId);
     if (error) throw error;
   }
 
@@ -656,7 +667,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
 
     if (q.startsWith("#")) {
       const tag = q.slice(1);
-      const { data, error } = await supabase.from("vtubers").select("slug,display_name,view_count,tags,generation").contains("tags", [tag]).limit(50);
+      const { data, error } = await sb.from("vtubers").select("slug,display_name,view_count,tags,generation").contains("tags", [tag]).limit(50);
       if (error) throw error;
       return { vtubers: data || [], pages: [], hits: [] };
     }
@@ -734,34 +745,34 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   async function dbReport({ target_type, target_id, reason }) {
-    const { error } = await supabase.from("reports").insert({ target_type, target_id, reason });
+    const { error } = await sb.from("reports").insert({ target_type, target_id, reason });
     if (error) throw error;
   }
 
   async function dbAdminReports(status="open") {
-    const { data, error } = await supabase.from("reports").select("*").eq("status", status).order("created_at", { ascending:false }).limit(200);
+    const { data, error } = await sb.from("reports").select("*").eq("status", status).order("created_at", { ascending:false }).limit(200);
     if (error) throw error;
     return data || [];
   }
 
   async function dbAdminCloseReport(id, status="closed") {
-    const { error } = await supabase.from("reports").update({ status }).eq("id", id);
+    const { error } = await sb.from("reports").update({ status }).eq("id", id);
     if (error) throw error;
   }
 
   async function dbLockPage(slug, is_locked, lock_reason="") {
-    const { error } = await supabase.from("wiki_pages").update({ is_locked, lock_reason: lock_reason || null }).eq("slug", slug);
+    const { error } = await sb.from("wiki_pages").update({ is_locked, lock_reason: lock_reason || null }).eq("slug", slug);
     if (error) throw error;
   }
 
   async function dbSetProtection(slug, protection_level) {
-    const { error } = await supabase.from("wiki_pages").update({ protection_level }).eq("slug", slug);
+    const { error } = await sb.from("wiki_pages").update({ protection_level }).eq("slug", slug);
     if (error) throw error;
   }
 
   async function dbViewCountRpc(slug) {
     if (!CONFIG.enableViewCountRpc) return;
-    const { error } = await supabase.rpc("increment_view_count", { p_slug: slug });
+    const { error } = await sb.rpc("increment_view_count", { p_slug: slug });
     if (error) console.warn("view rpc failed", error);
   }
 
@@ -945,7 +956,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
 
     // same agency / generation
     if (agency || generation) {
-      let q = supabase.from("vtubers")
+      let q = sb.from("vtubers")
         .select("slug,display_name,agency,generation,view_count,tags,updated_at")
         .eq("is_deleted", false)
         .neq("slug", slug);
@@ -1726,7 +1737,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   async function threadView({ id }) {
-    const { data: thread, error } = await supabase.from("discussion_threads").select("*").eq("id", id).maybeSingle();
+    const { data: thread, error } = await sb.from("discussion_threads").select("*").eq("id", id).maybeSingle();
     if (error) throw error;
     if (!thread) { render(notFoundView("/thread/" + id)); return; }
 
@@ -2103,23 +2114,23 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
       try {
         const email = $("#authEmail").value.trim().toLowerCase();
         if (!email) throw new Error("이메일 필요");
-        const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: (location.origin + location.pathname) } });
+        const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: (location.origin + location.pathname)} });
         if (error) throw error;
         toast("매직링크 발송", email);
       } catch (e) { toast("실패", e?.message || String(e), "error"); }
     });
 
     $("#oauthGithub").addEventListener("click", async () => {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: "github" });
+      const { error } = await sb.auth.signInWithOAuth({ provider: "github" });
       if (error) toast("OAuth 실패", error.message, "error");
     });
     $("#oauthGoogle").addEventListener("click", async () => {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
+      const { error } = await sb.auth.signInWithOAuth({ provider: "google" });
       if (error) toast("OAuth 실패", error.message, "error");
     });
 
     $("#authLogout").addEventListener("click", async () => {
-      await supabase.auth.signOut();
+      await sb.auth.signOut();
       toast("로그아웃");
       await refreshAuthBtn();
       await refreshStatusLine();
@@ -2134,12 +2145,12 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
         if (!email || !pass) throw new Error("이메일/비밀번호 필요");
 
         if (authMode === "signup") {
-          const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { emailRedirectTo: (location.origin + location.pathname) } });
+          const { data, error } = await sb.auth.signUp({ email, password: pass, options: { emailRedirectTo: (location.origin + location.pathname)} });
           if (error) throw error;
           await ensureProfile(data.user, username);
           toast("가입 완료", "이메일 인증이 필요할 수 있습니다.");
         } else {
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+          const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
           if (error) throw error;
           await ensureProfile(data.user, null);
           toast("로그인 완료");
@@ -2304,7 +2315,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
     bindCmdPalette();
     bindTheme();
 
-    supabase.auth.onAuthStateChange(async () => {
+    sb.auth.onAuthStateChange(async () => {
       await refreshAuthBtn();
       await refreshStatusLine();
       navigate();
