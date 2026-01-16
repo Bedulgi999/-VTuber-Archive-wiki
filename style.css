@@ -13,27 +13,6 @@ html[data-theme="light"]{
   --shadow: 0 18px 60px rgba(10,15,34,.18);
 }
 
-html[data-theme="crt"]{
-  --bg:#05060a;
-  --fg:#eafff7;
-  --muted:#8fd7c3;
-  --card: rgba(124,255,215,.08);
-  --line: rgba(124,255,215,.16);
-  --neon:#7cffd7;
-  --neon2:#9a7cff;
-}
-
-html[data-theme="crt"]::before{
-  content:"";
-  position:fixed;
-  inset:0;
-  pointer-events:none;
-  background:
-    linear-gradient(to bottom, rgba(255,255,255,.06), rgba(255,255,255,0) 40%, rgba(0,0,0,.12)),
-    repeating-linear-gradient(to bottom, rgba(255,255,255,.05) 0px, rgba(255,255,255,.05) 1px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) 4px);
-  mix-blend-mode: overlay;
-  opacity:.35;
-}
 
 /* VTuber Archive Wiki - 3 files only (v2)
    Added:

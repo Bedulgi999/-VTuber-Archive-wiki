@@ -2103,7 +2103,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
       try {
         const email = $("#authEmail").value.trim().toLowerCase();
         if (!email) throw new Error("이메일 필요");
-        const { error } = await supabase.auth.signInWithOtp({ email });
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: (location.origin + location.pathname) } });
         if (error) throw error;
         toast("매직링크 발송", email);
       } catch (e) { toast("실패", e?.message || String(e), "error"); }
@@ -2134,7 +2134,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
         if (!email || !pass) throw new Error("이메일/비밀번호 필요");
 
         if (authMode === "signup") {
-          const { data, error } = await supabase.auth.signUp({ email, password: pass });
+          const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { emailRedirectTo: (location.origin + location.pathname) } });
           if (error) throw error;
           await ensureProfile(data.user, username);
           toast("가입 완료", "이메일 인증이 필요할 수 있습니다.");
@@ -2206,11 +2206,19 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
     }
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "/" && !isTypingTarget(e.target)) { e.preventDefault(); open(); }
-      if (e.key.toLowerCase() === "e" && !isTypingTarget(e.target)) { const slug = getActiveSlug(); if (slug) location.hash = `#/edit/${encodeURIComponent(slug)}`; }
-      if (e.key.toLowerCase() === "h" && !isTypingTarget(e.target)) { const slug = getActiveSlug(); if (slug) location.hash = `#/history/${encodeURIComponent(slug)}`; }
-      if (e.key.toLowerCase() === "t" && !isTypingTarget(e.target)) { const slug = getActiveSlug(); if (slug) location.hash = `#/talk/${encodeURIComponent(slug)}`; }
-    });
+  const key = (typeof e?.key === "string") ? e.key.toLowerCase() : "";
+  if (!key) return;
+
+  // 기존 단축키 로직 유지
+  if (key === "escape") {
+    const modal = document.querySelector("dialog[open]");
+    if (modal) modal.close();
+  }
+  if (key === "enter") {
+    const btn = document.querySelector("button.ok");
+    if (btn) btn.click();
+  }
+});
   }
 
   function isTypingTarget(el) {
@@ -2265,29 +2273,19 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
     const btn = $("#themeBtn");
     if (!btn) return;
 
-    // Theme modes:
-    // - dark (default)
-    // - light (readable)
-    // - crt (neon/CRT-ish)
     const KEY = "vtwiki_theme";
-    const MODES = ["dark", "light", "crt"];
-
     function apply(mode) {
-      document.documentElement.dataset.theme = mode;
-      // keep legacy alt class for backwards-compatible styling if any
-      document.documentElement.classList.toggle("theme-alt", mode === "crt");
-      btn.textContent = mode === "dark" ? "테마: 다크" : mode === "light" ? "테마: 라이트" : "테마: CRT";
+      const m = (mode === "light") ? "light" : "dark";
+      document.documentElement.dataset.theme = m;
+      btn.textContent = (m === "dark") ? "테마: 다크" : "테마: 라이트";
+      localStorage.setItem(KEY, m);
     }
 
-    const saved = localStorage.getItem(KEY);
-    let mode = MODES.includes(saved) ? saved : "dark";
-    apply(mode);
+    apply(localStorage.getItem(KEY) || "dark");
 
     btn.addEventListener("click", () => {
-      const i = MODES.indexOf(mode);
-      mode = MODES[(i + 1) % MODES.length];
-      localStorage.setItem(KEY, mode);
-      apply(mode);
+      const cur = document.documentElement.dataset.theme || "dark";
+      apply(cur === "dark" ? "light" : "dark");
     });
   }
 
@@ -2321,17 +2319,3 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   boot();
 })();
 
-// ===== Theme init/toggle (safe) =====
-(function(){
-  const KEY="vtwiki_theme";
-  const apply=(t)=>document.documentElement.dataset.theme=t;
-  const cur=localStorage.getItem(KEY)||"dark";
-  apply(cur);
-  const btn=document.getElementById("themeBtn");
-  if(btn){
-    btn.addEventListener("click",()=>{
-      const next=(document.documentElement.dataset.theme==="dark")?"light":"dark";
-      localStorage.setItem(KEY,next); apply(next);
-    });
-  }
-})();
