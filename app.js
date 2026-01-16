@@ -2110,9 +2110,6 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
     setStatus(`${profile?.username || user.email || "user"} · role:${profile?.role || "user"} · ${user.id.slice(0,8)}…`);
   }
 
-  
-  function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
-
   function isAbortError(err) {
     return (err && (err.name === "AbortError" || String(err?.message || "").toLowerCase().includes("aborted")));
   }
