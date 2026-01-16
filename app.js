@@ -16,6 +16,9 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 window.sb = sb;
+// Alias for legacy code paths
+const supabase = sb;
+window.supabaseClient = sb;
 // ================================================
 
 // ===========================
