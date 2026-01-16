@@ -2111,6 +2111,8 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   
+  function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
   function isAbortError(err) {
     return (err && (err.name === "AbortError" || String(err?.message || "").toLowerCase().includes("aborted")));
   }
@@ -2165,7 +2167,18 @@ function bindAuthModal() {
           await ensureProfile(data.user, username);
           toast("가입 완료", "이메일로 인증 링크가 갔어. 메일에서 확인 후 로그인해줘. (필요하면 매직링크 버튼도 사용 가능)");
         } else {
-          const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+          let data, error;
+          try {
+            ({ data, error } = await sb.auth.signInWithPassword({ email, password: pass }));
+          } catch (e) {
+            if (isAbortError(e)) {
+              // retry once after a short delay (often fixes aborted fetch caused by rapid state changes)
+              await sleep(300);
+              ({ data, error } = await sb.auth.signInWithPassword({ email, password: pass }));
+            } else {
+              throw e;
+            }
+          }
           if (error) {
             // Supabase requires email confirmation before password sign-in.
             if (isEmailConfirmError(error)) {
@@ -2363,3 +2376,11 @@ function bindAuthModal() {
   boot();
 })();
 
+
+// --- global: ignore AbortError noise so it doesn't break UX ---
+window.addEventListener("unhandledrejection", (ev) => {
+  const r = ev?.reason;
+  if (r && (r.name === "AbortError" || String(r?.message || "").toLowerCase().includes("aborted"))) {
+    ev.preventDefault();
+  }
+});
