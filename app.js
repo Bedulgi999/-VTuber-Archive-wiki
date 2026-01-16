@@ -1,13 +1,22 @@
-// ===== Supabase client init (must run before any auth/db calls) =====
+// ===== Supabase client init (single instance) =====
 const SUPABASE_URL = "https://wzbjbiaiumonyvucewqi.sb.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YmpiaWFpdW1vbnl2dWNld3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0NDAxMTUsImV4cCI6MjA4NDAxNjExNX0.DFmuUKBRDCDkE5zHF5zH9GLU8Wd-IGFIbLwO-5gJC3o";
 
 if (!window.supabase?.createClient) {
   throw new Error("Supabase SDK not loaded. Check index.html script order.");
 }
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-window.sb = sb; // debug
-// =========================================================
+
+// Use a project-specific storageKey to avoid conflicts, even if a second instance is accidentally created.
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storageKey: "vtwiki-auth-token",
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
+window.sb = sb;
+// ================================================
 
 // ===========================
 // DOM safety helpers (prevent null crashes)
@@ -524,11 +533,9 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   // ===========================
   // 4) SUPABASE CLIENT
   // ===========================
-  let supabase = null;
+  let supabase = sb;
 
-  function initSupabase() {
-    supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  function initSupabase() { supabase = sb; },
     });
   }
 
