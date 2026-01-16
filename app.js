@@ -1,5 +1,5 @@
 // ===== Supabase client init (single instance) =====
-const SUPABASE_URL = "https://wzbjbiaiumonyvucewqi.sb.co";
+const SUPABASE_URL = "https://wzbjbiaiumonyvucewqi.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YmpiaWFpdW1vbnl2dWNld3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0NDAxMTUsImV4cCI6MjA4NDAxNjExNX0.DFmuUKBRDCDkE5zHF5zH9GLU8Wd-IGFIbLwO-5gJC3o";
 
 if (!window.supabase?.createClient) {
@@ -85,7 +85,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   // ===========================
   const CONFIG = {
     // Supabase 프로젝트 Settings → API에서 복사
-    supabaseUrl: "https://wzbjbiaiumonyvucewqi.sb.co",
+    supabaseUrl: "https://wzbjbiaiumonyvucewqi.supabase.co",
     supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YmpiaWFpdW1vbnl2dWNld3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0NDAxMTUsImV4cCI6MjA4NDAxNjExNX0.DFmuUKBRDCDkE5zHF5zH9GLU8Wd-IGFIbLwO-5gJC3o",
 
     siteName: "VTuber Archive Wiki",
