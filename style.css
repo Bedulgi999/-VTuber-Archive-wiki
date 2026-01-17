@@ -446,3 +446,7 @@ textarea{ min-height: 220px; resize: vertical; }
 body{ background:var(--bg); color:var(--text); }
 .card, .cardlite, .panel{ background:var(--panel); }
 a{ color:var(--accent); }
+
+.ib-link{margin:4px 0}
+.ib-link a{display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.ib-linklabel{opacity:.92}

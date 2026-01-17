@@ -345,11 +345,25 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   }
 
   function infoboxHtmlFromArgs(args) {
+    const refed = { footHtml: "" };
+
     const title = args.name || args.title || "Infobox";
     const rows = [];
     const map = [
+      ["gender", "성별"],
+      ["species", "종족"],
+      ["age", "나이"],
+      ["birthday", "생일"],
+      ["height", "신장"],
+      ["blood_type", "혈액형"],
+      ["mbti", "MBTI"],
       ["agency", "소속"],
       ["generation", "세대/기수"],
+      ["design", "디자인"],
+      ["live2d", "Live2D"],
+      ["oshi_mark", "오시마크"],
+      ["fan_name", "팬네임"],
+      ["signature", "SIGNATURE"],
       ["debut", "데뷔"],
       ["platforms", "플랫폼"],
       ["fandom", "팬덤"],
@@ -396,7 +410,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
         ${args.subtitle ? `<div class="ib-sub">${escapeHtml(args.subtitle)}</div>` : ""}
         <div class="ib-grid">${grid || `<div class="muted small">필드가 비었습니다.</div>`}</div>
       </div>
-      ${refed.footHtml || ""}
+      
     `;
   }
 
@@ -472,7 +486,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
       ${infoboxHtml ? `<div style="margin-bottom:14px">${infoboxHtml}</div>` : ""}
       ${tocHtml}
       <div class="wiki">${finalHtml}</div>
-      ${refed.footHtml || ""}
+      
     `;
 
     // If __TOC__ token was used, prefer toc at that location
@@ -535,7 +549,7 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
   // ===========================
   let supabase = sb;
 
-  function initSupabase() { supabase = sb; }
+  function initSupabase(){ /* sb is the only client instance */ }
 
   async function getUser() {
     const { data } = await sb.auth.getUser();
@@ -1038,7 +1052,34 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
     </div>`;
   }
 
-  async function buildAutoInfobox(slug, vtuber) {
+  
+  function platformIcon(key){
+    const k = String(key||"").toLowerCase();
+    const common = 'style="width:18px;height:18px;vertical-align:-3px;margin-right:8px;opacity:.95"';
+    if (k === "youtube" || k === "yt" || k === "replay") return `<span ${common}>▶️</span>`;
+    if (k === "twitch") return `<span ${common}>🟣</span>`;
+    if (k === "chzzk" || k === "치지직") return `<span ${common}>🟩</span>`;
+    if (k === "twitter" || k === "x") return `<span ${common}>𝕏</span>`;
+    if (k === "instagram") return `<span ${common}>📷</span>`;
+    if (k === "tiktok") return `<span ${common}>🎵</span>`;
+    if (k === "discord") return `<span ${common}>💬</span>`;
+    if (k === "naver_cafe" || k === "cafe") return `<span ${common}>☕</span>`;
+    return `<span ${common}>🔗</span>`;
+  }
+  function renderLinkRow(mapObj){
+    const obj = mapObj && typeof mapObj === "object" ? mapObj : {};
+    const keys = Object.keys(obj).filter(k => obj[k]).slice(0, 24);
+    if (!keys.length) return `<span class="muted">없음</span>`;
+    return keys.map(k=>{
+      const url = String(obj[k]);
+      const safeUrl = escapeHtml(url);
+      const label = escapeHtml(k);
+      return `<div class="ib-link"><a href="${safeUrl}" target="_blank" rel="noreferrer">${platformIcon(k)}<span class="ib-linklabel">${label}</span></a></div>`;
+    }).join("");
+  }
+async function buildAutoInfobox(slug, vtuber) {
+    const refed = { footHtml: "" };
+
     if (!vtuber) return "";
     const streams = await dbListStreams(slug, 5);
     const chips = []
@@ -1046,10 +1087,22 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
     if (vtuber.hashtags?.length) chips.push(...vtuber.hashtags.slice(0,8).map(h => h.startsWith("#")? h : "#"+h));
     const chipHtml = chips.map(c => `<span class="ib-chip">${escapeHtml(c)}</span>`).join("");
 
+    const p = (vtuber.profile && typeof vtuber.profile === "object") ? vtuber.profile : {};
     const gridRows = [
+      ["성별", p.gender || "미상"],
+      ["종족", p.species || "미상"],
+      ["나이", p.age || "미상"],
+      ["생일", p.birthday || "미상"],
+      ["신장", p.height || "미상"],
+      ["혈액형", p.blood_type || "미상"],
+      ["MBTI", p.mbti || "미상"],
       ["소속", vtuber.agency || "개인/미상"],
       ["세대/기수", vtuber.generation || "미상"],
       ["데뷔", vtuber.debut_date || "미상"],
+      ["디자인", p.design || "미상"],
+      ["Live2D", p.live2d || "미상"],
+      ["오시마크", p.oshi_mark || "없음"],
+      ["팬네임", (vtuber.fandom || p.fan_name) || "미상"],
       ["조회", String(vtuber.view_count || 0)],
     ];
 
@@ -1074,14 +1127,20 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
         <div class="ib-sub">${escapeHtml(slug)} · 자동 인포박스</div>
         <div class="ib-grid">
           ${gridRows.map(([k,v]) => `<div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div>`).join("")}
-          <div class="k">플랫폼</div>
-          <div class="v">${platHtml || `<span class="muted">없음</span>`}</div>
+          <div class="k">SOCIAL · 플랫폼</div>
+          <div class="v">${platHtml}</div>
+          <div class="k">SOCIAL · SNS</div>
+          <div class="v">${snsHtml}</div>
+          <div class="k">커뮤니티</div>
+          <div class="v">${comHtml}</div>
           <div class="k">방송 기록</div>
           <div class="v">${streamHtml}</div>
+                  <div class="k">SIGNATURE</div>
+          <div class="v">${escapeHtml(p.signature || "—")}</div>
         </div>
         ${chipHtml ? `<div class="ib-chips" style="margin-top:10px">${chipHtml}</div>` : ""}
       </div>
-      ${refed.footHtml || ""}
+      
     `;
   }
 
@@ -1611,16 +1670,45 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
           <form id="vtForm" class="grid gap12">
             <label class="field"><div class="label">슬러그</div><input id="vtSlug" placeholder="예: airina" required /></label>
             <label class="field"><div class="label">표시 이름</div><input id="vtName" placeholder="예: Airina" required /></label>
+            <div class="hr"></div>
+            <div class="muted small">기본 프로필</div>
+            <label class="field"><div class="label">성별</div><input id="vtGender" placeholder="예: 여성 / 남성 / 논바이너리 / 미상" /></label>
+            <label class="field"><div class="label">종족</div><input id="vtSpecies" placeholder="예: 인간 / 엘프 / 고양이 / ..." /></label>
+            <label class="field"><div class="label">나이</div><input id="vtAge" placeholder="예: 17 / 200살 / 미상" /></label>
+            <label class="field"><div class="label">생일</div><input id="vtBirthday" placeholder="예: 03-14 또는 2000-03-14" /></label>
+            <label class="field"><div class="label">신장</div><input id="vtHeight" placeholder="예: 158cm" /></label>
+            <label class="field"><div class="label">혈액형</div><input id="vtBlood" placeholder="예: A / B / O / AB / 미상" /></label>
+            <label class="field"><div class="label">MBTI</div><input id="vtMbti" placeholder="예: INFP" /></label>
+            <label class="field"><div class="label">디자인</div><input id="vtDesign" placeholder="예: 콘셉트/의상/테마 요약" /></label>
+            <label class="field"><div class="label">Live2D</div><input id="vtLive2D" placeholder="예: 사용 / 미사용 / 모델러 이름" /></label>
+            <label class="field"><div class="label">오시마크</div><input id="vtOshi" placeholder="예: 🌙🎀" /></label>
+
+            <div class="hr"></div>
+            <div class="muted small">SOCIAL</div>
+            <label class="field"><div class="label">플랫폼(아이콘 자동) 링크(JSON)</div>
+              <textarea id="vtPlatforms" style="min-height:120px" placeholder='{"chzzk":"https://chzzk.naver.com/...","youtube":"https://www.youtube.com/@...","twitch":"https://twitch.tv/...","replay":"https://www.youtube.com/playlist?list=..."}'></textarea>
+            </label>
+            <label class="field"><div class="label">SNS 링크(JSON)</div>
+              <textarea id="vtSNS" style="min-height:110px" placeholder='{"twitter":"https://x.com/...","instagram":"https://instagram.com/...","tiktok":"https://tiktok.com/@...","discord":"https://discord.gg/..."}'></textarea>
+            </label>
+
+            <div class="hr"></div>
+            <div class="muted small">커뮤니티</div>
+            <label class="field"><div class="label">커뮤니티 링크(JSON)</div>
+              <textarea id="vtCommunity" style="min-height:90px" placeholder='{"naver_cafe":"https://cafe.naver.com/..."}'></textarea>
+            </label>
+
+            <div class="hr"></div>
+            <div class="muted small">SIGNATURE</div>
+            <label class="field"><div class="label">시그니처</div><input id="vtSignature" placeholder="예: 인삿말/상징 문구/캐치프레이즈" /></label>
+
             <label class="field"><div class="label">소속</div><input id="vtAgency" placeholder="예: 개인 / hololive / ..." /></label>
             <label class="field"><div class="label">세대/기수</div><input id="vtGen" placeholder="예: 0기 / 1기 / 2nd gen" /></label>
             <label class="field"><div class="label">데뷔일</div><input id="vtDebut" placeholder="YYYY-MM-DD" /></label>
-            <label class="field"><div class="label">팬덤</div><input id="vtFandom" placeholder="예: Airinators" /></label>
+            <label class="field"><div class="label">팬네임(팬덤)</div><input id="vtFandom" placeholder="예: Airinators" /></label>
             <label class="field"><div class="label">해시태그</div><input id="vtHash" placeholder="#fanart #live" /></label>
             <label class="field"><div class="label">태그</div><input id="vtTags" placeholder="#kawaii #twitch #korea" /></label>
-            <label class="field"><div class="label">플랫폼 링크(JSON)</div>
-              <textarea id="vtPlatforms" style="min-height:120px" placeholder='{"twitch":"https://twitch.tv/...","youtube":"https://youtube.com/@..."}'></textarea>
-            </label>
-            <label class="field"><div class="label">짧은 소개</div><textarea id="vtBio" style="min-height:140px" placeholder="프로필 카드 소개"></textarea></label>
+<label class="field"><div class="label">짧은 소개</div><textarea id="vtBio" style="min-height:140px" placeholder="프로필 카드 소개"></textarea></label>
             <div class="row gap10 flex-wrap">
               <button class="btn ok" type="submit">등록</button>
               <a class="btn" href="#/">취소</a>
@@ -1644,7 +1732,37 @@ function setVal(id, v){ const e = document.getElementById(id); if(e) e.value = S
           catch { throw new Error("플랫폼 JSON이 올바르지 않습니다."); }
         }
 
-        const tags = parseTags($("#vtTags").value);
+        
+        let sns = {};
+        const snsTxt = ($("#vtSNS")?.value || "").trim();
+        if (snsTxt) {
+          try { sns = JSON.parse(snsTxt); }
+          catch { throw new Error("SNS JSON이 올바르지 않습니다."); }
+        }
+
+        let community = {};
+        const comTxt = ($("#vtCommunity")?.value || "").trim();
+        if (comTxt) {
+          try { community = JSON.parse(comTxt); }
+          catch { throw new Error("커뮤니티 JSON이 올바르지 않습니다."); }
+        }
+
+        const profile = {
+          gender: ($("#vtGender")?.value || "").trim() || null,
+          species: ($("#vtSpecies")?.value || "").trim() || null,
+          age: ($("#vtAge")?.value || "").trim() || null,
+          birthday: ($("#vtBirthday")?.value || "").trim() || null,
+          height: ($("#vtHeight")?.value || "").trim() || null,
+          blood_type: ($("#vtBlood")?.value || "").trim() || null,
+          mbti: ($("#vtMbti")?.value || "").trim() || null,
+          design: ($("#vtDesign")?.value || "").trim() || null,
+          live2d: ($("#vtLive2D")?.value || "").trim() || null,
+          oshi_mark: ($("#vtOshi")?.value || "").trim() || null,
+          signature: ($("#vtSignature")?.value || "").trim() || null,
+          social: { platforms, sns },
+          community,
+        };
+const tags = parseTags($("#vtTags").value);
         const hashtags = parseTags($("#vtHash").value).map(t => t.startsWith("#") ? t : "#"+t);
 
         await dbUpsertVtuber({
